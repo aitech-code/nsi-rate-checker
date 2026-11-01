@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { text, loadLang, saveLang, type Lang } from './i18n'
 import MrsSearch from './MrsSearch'
-import Nomenclature from './Nomenclature'
+import Nomenclature from './NomenclatureCard'
 import Justify from './Justify'
 import RateAnalysis from './RateAnalysis'
 import BatchCheck, { type LoadRequest } from './BatchCheck'
