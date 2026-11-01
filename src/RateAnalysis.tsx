@@ -15,7 +15,7 @@ import { perBase } from './extras'
 // Lines fill automatically: extras from step 3, and/or official MRS-2017 quantities x current market rates.
 
 type Sec = 'M' | 'L' | 'E'
-type Line = { id: number; sec: Sec; desc: string; qty: string; unit: string; rate: string; per: string; src: 'extra' | 'tpl' | 'user'; key?: string; old?: boolean }
+type Line = { id: number; sec: Sec; desc: string; qty: string; unit: string; rate: string; per: string; src: 'extra' | 'tpl' | 'user'; key?: string }
 
 const SUNDRIES = 3 // % of labour (MRS analysis format)
 const num = (s: string) => parseFloat((s ?? '').replace(/,/g, '')) || 0
@@ -75,7 +75,8 @@ export default function RateAnalysis({ t, item, just, mrs }: { t: Text; item: It
       ...l.filter(x => x.src === 'extra' || x.src === 'user'),
       ...it.lines.map(x => {
         const lib = findRate(rates, x.d)
-        return { id: nextId++, sec: x.s, desc: x.d, qty: q4(x.q * factor), unit: x.u, rate: lib ? '' : String(x.r), per: String(lib ? lib.per : x.p), src: 'tpl' as const, key: lib?.key, old: !lib }
+        // MRS-2017 is used only for quantities; rates come from the market rates list or are typed by the engineer
+        return { id: nextId++, sec: x.s, desc: x.d, qty: q4(x.q * factor), unit: x.u, rate: '', per: String(lib ? lib.per : x.p), src: 'tpl' as const, key: lib?.key }
       }),
     ])
   }
@@ -83,7 +84,7 @@ export default function RateAnalysis({ t, item, just, mrs }: { t: Text; item: It
   const rateOf = (x: Line) => (x.key ? libByKey.get(x.key)?.rate ?? 0 : num(x.rate))
   const add = (sec: Sec) => setLines(l => [...l, { id: nextId++, sec, desc: '', qty: '1', unit: sec === 'L' ? 'Day' : 'No', rate: '', per: '1', src: 'user' }])
   const set = (id: number, k: keyof Line, v: string) => setLines(l => l.map(x => (x.id === id
-    ? (k === 'rate' ? { ...x, rate: v, key: undefined, old: false } : { ...x, [k]: v })
+    ? (k === 'rate' ? { ...x, rate: v, key: undefined } : { ...x, [k]: v })
     : x)))
   const del = (id: number) => setLines(l => l.filter(x => x.id !== id))
   const setLib = (key: string, v: string) => {
@@ -118,7 +119,7 @@ export default function RateAnalysis({ t, item, just, mrs }: { t: Text; item: It
     return { code: h.item.c, d: h.item.d, u: h.item.u, r: h.item.r, perUnit: theirs.rate / mine.rate, score: h.score }
   }, [mrs.index, tpl, item.input, unit])
 
-  const oldLines = lines.filter(x => x.old)
+  const needRate = lines.filter(x => !x.key && num(x.rate) <= 0 && x.desc.trim())
   const lowWage = lines.filter(x => x.sec === 'L' && UNSKILLED.test(x.desc.trim()) && /day/i.test(x.unit) && rateOf(x) > 0 && rateOf(x) < MIN_WAGE.perDay)
   const usedSources = [...new Map(lines.filter(x => x.key).map(x => libByKey.get(x.key!)!).filter(Boolean).map(r => [r.src.name, r.src])).values()]
 
@@ -131,15 +132,17 @@ export default function RateAnalysis({ t, item, just, mrs }: { t: Text; item: It
       <>
         <tr className={'bg-slate-100 font-semibold' + hideInPrint}><td className={cell} colSpan={7}>{title}</td></tr>
         {rows.map(x => (
-          <tr key={x.id} className={x.old ? 'bg-red-50' : ''}>
+          <tr key={x.id} className={!x.key && num(x.rate) <= 0 ? 'bg-amber-50' : ''}>
             <td className={cell}><input value={x.desc} onChange={e => set(x.id, 'desc', e.target.value)} className={box} /></td>
             <td className={cell + ' w-16'}><input inputMode="decimal" value={x.qty} onChange={e => set(x.id, 'qty', e.target.value)} className={box + ' text-right'} /></td>
             <td className={cell + ' w-14'}><input value={x.unit} onChange={e => set(x.id, 'unit', e.target.value)} className={box} /></td>
             <td className={cell + ' w-28'}>
               <input inputMode="decimal" value={x.key ? String(rateOf(x)) : x.rate} onChange={e => set(x.id, 'rate', e.target.value)}
-                className={box + ' text-right' + (x.old ? ' text-red-700' : '')} />
+                placeholder={t.ra_enterRate} className={box + ' text-right'} />
               {x.key && <span className="block text-[10px] leading-tight text-green-700 print:hidden">✓ {t.ra_marketTag}</span>}
-              {x.old && <span className="block text-[10px] leading-tight text-red-700 print:hidden">⚠ {t.ra_old2017}</span>}
+              {!x.key && x.desc.trim() && (
+                <a href={surveyUrl(`${x.desc} price ${x.unit === 'Day' ? 'daily wage' : ''} Peshawar Pakistan`)} target="_blank" rel="noreferrer" className="block text-[10px] leading-tight text-blue-800 underline print:hidden">🔎 {t.ra_findPrice}</a>
+              )}
             </td>
             <td className={cell + ' w-14'}><input inputMode="decimal" value={x.per} onChange={e => set(x.id, 'per', e.target.value)} className={box + ' text-right'} /></td>
             <td className={cell + ' w-24 text-right'}>{fmt(amt(x))}</td>
@@ -179,7 +182,7 @@ export default function RateAnalysis({ t, item, just, mrs }: { t: Text; item: It
         <p className="text-sm"><b>Rate analysis per:</b> {unit || '—'}</p>
         {tpl && (
           <p className="text-xs text-slate-600">
-            Quantities: MRS-2017 rate analysis <b>{tpl.c}</b> ({tpl.n}, per {tpl.u}, book page {tpl.pg}){tpl.factor !== 1 ? ` × ${q4(tpl.factor)} to convert to per ${unit}` : ''}.
+            Quantities taken from MRS-2017 rate analysis <b>{tpl.c}</b> (template only) ({tpl.n}, per {tpl.u}, book page {tpl.pg}){tpl.factor !== 1 ? ` × ${q4(tpl.factor)} to convert to per ${unit}` : ''}.
           </p>
         )}
 
@@ -194,7 +197,7 @@ export default function RateAnalysis({ t, item, just, mrs }: { t: Text; item: It
             <ul className="mt-2 space-y-1">
               {suggestions.map(s => (
                 <li key={s.it.c} className="flex flex-wrap items-start justify-between gap-2">
-                  <span><b className="font-mono">{s.it.c}</b> ({s.score}%) — {s.it.n} <span className="text-slate-500">[per {s.it.u}; 2017 rate Rs {s.it.rate !== null ? fmt(s.it.rate) : '—'}]</span></span>
+                  <span><b className="font-mono">{s.it.c}</b> ({s.score}%) — {s.it.n} <span className="text-slate-500">[per {s.it.u}]</span></span>
                   <button onClick={() => loadTpl(s.it)} className="shrink-0 rounded bg-blue-800 px-2 py-1 text-xs font-semibold text-white">{tpl?.c === s.it.c ? '↻ ' : ''}{t.ra_tplUse}</button>
                 </li>
               ))}
@@ -268,9 +271,9 @@ export default function RateAnalysis({ t, item, just, mrs }: { t: Text; item: It
         )}
 
         {/* Warnings */}
-        {(oldLines.length > 0 || lowWage.length > 0) && (
-          <ul className="mt-3 list-disc space-y-1 rounded-lg border border-red-200 bg-red-50 p-3 ps-8 text-sm text-red-800 print:hidden">
-            {oldLines.length > 0 && <li>{t.ra_oldWarn} {oldLines.map(x => x.desc).join(', ')}</li>}
+        {(needRate.length > 0 || lowWage.length > 0) && (
+          <ul className="mt-3 list-disc space-y-1 rounded-lg border border-amber-200 bg-amber-50 p-3 ps-8 text-sm text-amber-900 print:hidden">
+            {needRate.length > 0 && <li>{t.ra_needRate} {needRate.map(x => x.desc).join(', ')}</li>}
             {lowWage.length > 0 && <li>{t.ra_wageWarn} Rs {fmt(MIN_WAGE.perDay)}/day: {lowWage.map(x => `${x.desc} Rs ${fmt(rateOf(x))}`).join(', ')}</li>}
           </ul>
         )}
@@ -291,13 +294,12 @@ export default function RateAnalysis({ t, item, just, mrs }: { t: Text; item: It
         )}
 
         {/* Sources (printed) */}
-        {(usedSources.length > 0 || oldLines.length > 0 || tpl) && (
+        {(usedSources.length > 0 || tpl) && (
           <div className="mt-3 text-xs text-slate-600">
             <b>{t.ra_sources}:</b>
             <ul className="list-disc ps-5">
-              {tpl && <li>Quantities: MRS-2017 rate analysis book, CSR Cell, Finance Department KP — item {tpl.c}, page {tpl.pg}.</li>}
+              {tpl && <li>Quantities (template): MRS-2017 rate analysis book, CSR Cell, Finance Department KP — item {tpl.c}, page {tpl.pg}. Rates are current market rates, not 2017 rates.</li>}
               {usedSources.map(s => <li key={s.name}>{s.name}{s.date ? `, ${s.date}` : ''}{s.url ? ` — ${s.url}` : ''}</li>)}
-              {oldLines.length > 0 && <li className="text-red-700">MRS-2017 (2017) rates still used for: {oldLines.map(x => x.desc).join(', ')}</li>}
             </ul>
           </div>
         )}

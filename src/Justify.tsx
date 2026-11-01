@@ -5,6 +5,7 @@ import { DISTRICTS, OVERHEADS, OVERHEAD_TOTAL } from './districts'
 import type { Text } from './i18n'
 import type { Mrs } from './useMrs'
 import type { ItemState, JustifyState } from './item'
+import MarketPrice from './MarketPrice'
 
 const TOLERANCE = 5 // % of the NSI rate that may stay unexplained
 const OH = 1 + OVERHEAD_TOTAL / 100
@@ -54,7 +55,7 @@ export default function Justify({ t, mrs, item, onUpdate }: { t: Text; mrs: Mrs;
     : ''
 
   // Hand the extras, reference and final wording to step 4 (rate analysis)
-  const refLabel = manualRef.trim() ? 'Reference rate (typed)' : item.base && mrsRef !== null ? `MRS-2025 ${item.base.c} × ${factor.toFixed(2)} (${district})` : ''
+  const refLabel = manualRef.trim() ? 'Reference rate (typed / market price guide)' : item.base && mrsRef !== null ? `MRS-2025 ${item.base.c} × ${factor.toFixed(2)} (${district})` : ''
   const doneKey = JSON.stringify(done)
   useEffect(() => {
     onUpdate({ extras: JSON.parse(doneKey).map((l: { text: string; cost: number }) => ({ text: l.text, cost: l.cost })), ref, refLabel, finalText })
@@ -82,6 +83,9 @@ export default function Justify({ t, mrs, item, onUpdate }: { t: Text; mrs: Mrs;
 
       {!item.started || !nsi ? <p className="mt-3 rounded-lg bg-slate-50 p-3 text-sm text-slate-600">{t.jNoItem}</p> : (
         <>
+          {/* What does this item cost in the market today? */}
+          <MarketPrice t={t} text={item.base?.d || item.corrected || item.input} unit={item.unit} nsi={nsi} onUse={v => setManualRef(String(v))} />
+
           {/* Reference and gap */}
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
             <label className="text-sm"><span className="block text-slate-600">{t.mkDistrict}</span>
