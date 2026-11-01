@@ -1,8 +1,8 @@
-# NSI Rate Checker — C&W Department, Khyber Pakhtunkhwa
+# NSI Rate Checker 
 
 **Live app:** https://nsi-rate-checker.aitech-code.workers.dev
 **Code:** https://github.com/aitech-code/nsi-rate-checker
-**Owner:** Engr. Zeeshan Ahmad
+**Owner:** Engr. ZA
 **Current version:** v9.3 (1 Nov 2026) — data: **MRS-2025 1st Bi-Annual**
 
 This file is the project's memory. Read it before changing anything, and give it to
@@ -136,7 +136,7 @@ Attach **this README.md** (and the new MRS PDF if it's an MRS update), link your
 folder if using Claude desktop, then paste:
 
 ```
-I'm Engr. Zeeshan Ahmad (C&W Department KP). I maintain the NSI Rate Checker app
+I'm Engr. ZA). I maintain the NSI Rate Checker app
 (React + Vite + TypeScript + Tailwind, PWA, deployed on Cloudflare Workers from
 GitHub aitech-code/nsi-rate-checker). The attached README.md describes the whole
 project — read it first.
