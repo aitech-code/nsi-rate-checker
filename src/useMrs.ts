@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { buildIndex, type MrsData } from './search'
-import { mrsVocab } from './nomenclature'
+import { mrsVocab, INCLUDES } from './nomenclature'
+import { CATEGORIES } from './extras'
 
 const DATA_URL = '/data/mrs-2025-1.json'
 
@@ -15,7 +16,11 @@ export function useMrs() {
       .catch(() => setError(true))
   }, [])
   const index = useMemo(() => (data ? buildIndex(data.items) : null), [data])
-  const vocab = useMemo(() => (data ? mrsVocab(data.items.map(i => i.d)) : undefined), [data])
+  // Words for the spelling check: MRS wording plus the wording of the extras lists
+  const vocab = useMemo(
+    () => (data ? mrsVocab([...data.items.map(i => i.d), ...CATEGORIES.flatMap(c => c.extras), ...INCLUDES]) : undefined),
+    [data],
+  )
   return { data, error, index, vocab }
 }
 export type Mrs = ReturnType<typeof useMrs>

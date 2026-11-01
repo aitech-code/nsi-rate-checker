@@ -1,10 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import { correct, INCLUDES, type Details } from './nomenclature'
-import { CATEGORIES, detectCategories, slots, fill, perBase } from './extras'
 import { search, type MrsItem } from './search'
 import type { Text } from './i18n'
 import type { Mrs } from './useMrs'
-import type { ItemState } from './MarketCheck'
+import type { ItemState } from './item'
 
 const fmt = (n: number) => n.toLocaleString('en-PK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
@@ -15,54 +14,22 @@ export default function Nomenclature({ t, mrs, fromStep1, onUpdate }: { t: Text;
   const [started, setStarted] = useState(false)
   const [copied, setCopied] = useState(false)
   const [base, setBase] = useState<MrsItem | null>(null)
-  const [picked, setPicked] = useState<Record<string, string[]>>({}) // extra template -> typed values
   const [nsiRate, setNsiRate] = useState('')
 
-  // Extras for the type of item (from the text and the chosen MRS base item)
-  const cats = useMemo(() => detectCategories(input + ' ' + (base?.d ?? '')), [input, base])
-  const chosenExtras = Object.entries(picked).map(([tpl, vals]) => ({ tpl, text: fill(tpl, vals) }))
-  const missing = chosenExtras.filter(x => x.text === null).map(x => x.tpl)
-  const extraTexts = chosenExtras.map(x => x.text).filter((x): x is string => !!x)
-
-  // Spelling check: MRS words plus the words used in the extras list
-  const vocab = useMemo(() => {
-    if (!mrs.vocab) return undefined
-    const v = new Set(mrs.vocab)
-    for (const w of [...CATEGORIES.flatMap(c => c.extras), ...INCLUDES].join(' ').toLowerCase().match(/[a-z]+/g) ?? []) v.add(w)
-    return v
-  }, [mrs.vocab])
-
   // Result updates live once the engineer has pressed the button
-  const res = useMemo(
-    () => (started && input.trim() ? correct(input, unit, vocab, { ...d, includes: [...extraTexts, ...(d.includes ?? [])] }) : null),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [started, input, unit, d, JSON.stringify(picked), vocab],
-  )
-  // Share the corrected item with step 3 (market check) and step 4 (rate analysis)
-  useEffect(() => { onUpdate({ text: res?.text ?? '', unit, rate: nsiRate, base }) }, [res?.text, unit, nsiRate, base, onUpdate])
+  const res = useMemo(() => (started && input.trim() ? correct(input, unit, mrs.vocab, d) : null), [started, input, unit, d, mrs.vocab])
+
+  // Share the item with step 3 (justify the rate) and step 4 (rate analysis)
+  useEffect(() => {
+    onUpdate({ started, input, unit, rate: nsiRate, base, details: d, corrected: res?.text ?? '' })
+  }, [started, input, unit, nsiRate, base, d, res?.text, onUpdate])
 
   const hits = started && mrs.index ? search(mrs.index, input, { limit: 5 }).filter(h => h.score >= 35) : []
   const unitHint = base ? `${base.u} (${base.c})` : hits[0] ? `${hits[0].item.u} (${hits[0].item.c})` : null
 
-  // Rate gap against the MRS base item
-  const gap = (() => {
-    const r = parseFloat(nsiRate.replace(/,/g, ''))
-    if (!base || base.r === null || !r || !unit.trim()) return null
-    const mine = perBase(r, unit), theirs = perBase(base.r, base.u), one = perBase(1, base.u)
-    if (!mine || !theirs || !one || mine.base !== theirs.base) return { mismatch: true as const }
-    const diffPerMrsUnit = (mine.rate - theirs.rate) / one.rate
-    return { mismatch: false as const, diff: diffPerMrsUnit, pct: ((mine.rate - theirs.rate) / theirs.rate) * 100 }
-  })()
-
-  const pickBase = (it: MrsItem) => {
-    setBase(it); setInput(it.d); setUnit(it.u); setStarted(true); setCopied(false)
-  }
+  const pickBase = (it: MrsItem) => { setBase(it); setInput(it.d); setUnit(it.u); setStarted(true); setCopied(false) }
   const toggleInc = (inc: string) =>
     setD(x => ({ ...x, includes: x.includes?.includes(inc) ? x.includes.filter(i => i !== inc) : [...(x.includes ?? []), inc] }))
-  const toggleExtra = (tpl: string) =>
-    setPicked(p => { const n = { ...p }; if (n[tpl]) delete n[tpl]; else n[tpl] = slots(tpl).map(() => ''); return n })
-  const setVal = (tpl: string, i: number, v: string) =>
-    setPicked(p => ({ ...p, [tpl]: p[tpl].map((x, k) => (k === i ? v : x)) }))
   const copy = () => { if (res) navigator.clipboard?.writeText(res.text).then(() => setCopied(true)).catch(() => {}) }
 
   const field = (key: keyof Omit<Details, 'includes'>, label: string) => (
@@ -74,6 +41,7 @@ export default function Nomenclature({ t, mrs, fromStep1, onUpdate }: { t: Text;
   )
   const flagText = (k: string) => (t as Record<string, string>)['f_' + k]
   const whyText = (k: string) => (t as Record<string, string>)['why_' + k]
+  const inp = 'mt-1 rounded-lg border border-slate-300 p-2 focus:border-blue-600 focus:outline-none'
 
   return (
     <section className="rounded-xl bg-white p-4 shadow-sm">
@@ -90,63 +58,16 @@ export default function Nomenclature({ t, mrs, fromStep1, onUpdate }: { t: Text;
             {t.copyFrom1}
           </button>
         )}
-        <label className="text-sm">
-          <span className="block text-slate-600">{t.unitL}</span>
-          <input dir="ltr" value={unit} onChange={e => setUnit(e.target.value)}
-            className="mt-1 w-32 rounded-lg border border-slate-300 p-2 focus:border-blue-600 focus:outline-none" />
-        </label>
-        <label className="text-sm">
-          <span className="block text-slate-600">{t.nsiRateL}</span>
-          <input dir="ltr" inputMode="decimal" value={nsiRate} onChange={e => setNsiRate(e.target.value)}
-            className="mt-1 w-40 rounded-lg border border-slate-300 p-2 focus:border-blue-600 focus:outline-none" />
-        </label>
+        <label className="text-sm"><span className="block text-slate-600">{t.unitL}</span>
+          <input dir="ltr" value={unit} onChange={e => setUnit(e.target.value)} className={inp + ' w-32'} /></label>
+        <label className="text-sm"><span className="block text-slate-600">{t.nsiRateL}</span>
+          <input dir="ltr" inputMode="decimal" value={nsiRate} onChange={e => setNsiRate(e.target.value)} className={inp + ' w-40'} /></label>
       </div>
 
       {base && (
-        <div className="mt-3 rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <span>{t.baseLabel} <b dir="ltr" className="font-mono">{base.c}</b> — <b dir="ltr">Rs {base.r !== null ? fmt(base.r) : '—'} / {base.u}</b> · {t.page} {base.p}</span>
-            <button onClick={() => setBase(null)} className="text-xs text-blue-800 underline">✕</button>
-          </div>
-          {gap && (gap.mismatch
-            ? <p className="mt-2 text-amber-900">{t.unitMismatch} <b dir="ltr">{unit} ≠ {base.u}</b></p>
-            : <p className={`mt-2 font-semibold ${gap.diff > 0 ? 'text-red-800' : 'text-green-800'}`}>
-                {t.gapTitle}: <span dir="ltr">Rs {fmt(Math.abs(gap.diff))} / {base.u} ({gap.pct > 0 ? '+' : '−'}{Math.abs(gap.pct).toFixed(1)}%)</span>{' '}
-                {gap.diff > 0 ? t.gapMore : t.gapLess}
-              </p>)}
-        </div>
-      )}
-
-      {cats.length > 0 && (
-        <div className="mt-4 rounded-lg border-2 border-yellow-300 bg-yellow-50 p-3">
-          <h3 className="font-semibold text-blue-900">{t.extrasTitle} — <span dir="ltr">{cats.map(c => c.name).join(', ')}</span></h3>
-          <p className="mt-1 text-xs text-slate-700">{t.extrasHint}</p>
-          {cats.map(c => (
-            <div key={c.id} dir="ltr" className="mt-2 space-y-1 text-left text-sm">
-              {c.extras.map(tpl => {
-                const on = !!picked[tpl]
-                const parts = tpl.split(/(\{[^}]+\})/)
-                let k = -1
-                return (
-                  <div key={tpl} className="flex flex-wrap items-center gap-x-1 gap-y-1">
-                    <input type="checkbox" className="me-1" checked={on} onChange={() => toggleExtra(tpl)} />
-                    {parts.map((part, i) => {
-                      if (!part.startsWith('{')) return <span key={i}>{part}</span>
-                      k++
-                      const idx = k
-                      return on
-                        ? <input key={i} value={picked[tpl][idx]} placeholder={part.slice(1, -1)} onChange={e => setVal(tpl, idx, e.target.value)}
-                            className="w-28 rounded border border-slate-400 px-1 py-0.5 text-sm" />
-                        : <span key={i} className="text-slate-400">[{part.slice(1, -1)}]</span>
-                    })}
-                  </div>
-                )
-              })}
-            </div>
-          ))}
-          {missing.length > 0 && (
-            <p className="mt-2 text-sm text-red-800">{t.missingValue} <span dir="ltr">{missing.map(m => m.replace(/\{([^}]+)\}/g, '[$1]')).join('; ')}</span></p>
-          )}
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm">
+          <span>{t.baseLabel} <b dir="ltr" className="font-mono">{base.c}</b> — <b dir="ltr">Rs {base.r !== null ? fmt(base.r) : '—'} / {base.u}</b> · {t.page} {base.p}</span>
+          <button onClick={() => setBase(null)} className="text-xs text-blue-800 underline">✕</button>
         </div>
       )}
 

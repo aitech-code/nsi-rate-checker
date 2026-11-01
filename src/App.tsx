@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react'
 import { text, loadLang, saveLang, type Lang } from './i18n'
 import MrsSearch from './MrsSearch'
 import Nomenclature from './Nomenclature'
-import MarketCheck, { type ItemState } from './MarketCheck'
+import Justify from './Justify'
+import { EMPTY_ITEM, type ItemState } from './item'
 import { useMrs } from './useMrs'
 
 export default function App() {
@@ -10,7 +11,7 @@ export default function App() {
   const t = text[lang]
   const mrs = useMrs()
   const [step1Text, setStep1Text] = useState('')
-  const [item, setItem] = useState<ItemState>({ text: '', unit: '', rate: '', base: null })
+  const [item, setItem] = useState<ItemState>(EMPTY_ITEM)
 
   // Urdu reads right-to-left: update the whole page direction
   useEffect(() => {
@@ -49,7 +50,7 @@ export default function App() {
       <main className="mx-auto max-w-3xl space-y-3 p-4">
         <MrsSearch t={t} mrs={mrs} onAsk={setStep1Text} />
         <Nomenclature t={t} mrs={mrs} fromStep1={step1Text} onUpdate={setItem} />
-        <MarketCheck t={t} item={item} />
+        <Justify t={t} mrs={mrs} item={item} />
         {placeholder(4, t.step4)}
 
         <p className="rounded-lg bg-blue-50 p-3 text-sm text-blue-900">{t.install}</p>
