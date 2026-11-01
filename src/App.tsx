@@ -7,6 +7,9 @@ import RateAnalysis from './RateAnalysis'
 import BatchCheck, { type LoadRequest } from './BatchCheck'
 import { EMPTY_ITEM, EMPTY_JUSTIFY, type ItemState, type JustifyState } from './item'
 import { useMrs } from './useMrs'
+import { useInstall } from './useInstall'
+
+const VERSION = 'v9.3 · 1 Nov 2026' // shown in the header so you can see which version is live
 
 export default function App() {
   const [lang, setLang] = useState<Lang>(loadLang)
@@ -16,6 +19,8 @@ export default function App() {
   const [item, setItem] = useState<ItemState>(EMPTY_ITEM)
   const [just, setJust] = useState<JustifyState>(EMPTY_JUSTIFY)
   const [load, setLoad] = useState<LoadRequest | null>(null)
+  const inst = useInstall()
+  const [installHelp, setInstallHelp] = useState(false)
 
   // Urdu reads right-to-left: update the whole page direction
   useEffect(() => {
@@ -32,13 +37,29 @@ export default function App() {
             <h1 className="text-xl font-bold">{t.appName}</h1>
             <p className="text-sm text-blue-100">{t.subtitle}</p>
           </div>
-          <button
-            onClick={() => setLang(lang === 'en' ? 'ur' : 'en')}
-            className="rounded-lg bg-yellow-400 px-4 py-2 font-semibold text-blue-900 active:scale-95"
-          >
-            {t.switchTo}
-          </button>
+          <div className="flex shrink-0 flex-wrap justify-end gap-2">
+            {!inst.installed && (
+              <button
+                onClick={async () => { if (!(await inst.install())) setInstallHelp(h => !h) }}
+                className="rounded-lg bg-white px-3 py-2 font-semibold text-blue-900 active:scale-95"
+              >
+                ⬇ {t.installBtn}
+              </button>
+            )}
+            <button
+              onClick={() => setLang(lang === 'en' ? 'ur' : 'en')}
+              className="rounded-lg bg-yellow-400 px-4 py-2 font-semibold text-blue-900 active:scale-95"
+            >
+              {t.switchTo}
+            </button>
+          </div>
         </div>
+        {installHelp && (
+          <div className="mx-auto max-w-3xl px-4 pb-3">
+            <p className="rounded-lg bg-white p-3 text-sm text-blue-900">{t.installHelp}</p>
+          </div>
+        )}
+        <p dir="ltr" className="mx-auto max-w-3xl px-4 pb-1 text-right text-[10px] text-blue-200">{VERSION}</p>
       </header>
 
       <main className="mx-auto max-w-3xl space-y-3 p-4 print:max-w-none print:p-0">
@@ -51,7 +72,6 @@ export default function App() {
         </div>
         <RateAnalysis t={t} item={item} just={just} mrs={mrs} />
 
-        <p className="rounded-lg bg-blue-50 p-3 text-sm text-blue-900 print:hidden">{t.install}</p>
         <p className="text-xs text-slate-500 print:hidden">{t.dataNote}</p>
       </main>
     </div>

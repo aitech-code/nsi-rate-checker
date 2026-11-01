@@ -8,6 +8,9 @@ html[lang="ur"] body {
 
 /* Printing the rate analysis on A4 */
 @media print {
-  @page { size: A4; margin: 12mm; }
+  /* margin 0 stops the browser printing its own date, title and web address
+     at the top/bottom of the page; the page margin is added as padding instead */
+  @page { size: A4; margin: 0; }
   body { font-size: 11px; }
+  #rate-analysis { padding: 12mm 12mm 10mm; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
 }
