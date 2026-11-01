@@ -61,11 +61,15 @@ const STOP = new Set(('a an and the of to in on at for by or as per with from al
   'supply erection erecting laying making etc i e ie no nos each job item quality best make same shown drawing ' +
   'drawings specification specifications specified required necessary').split(' '))
 
+const REMOVAL = /\b(dismantl\w*|removing|removal|remove|demolition|demolish\w*|scraping|stripping)\b/i
+
 function normalize(s: string): string {
   let t = ' ' + s.toLowerCase() + ' '
   t = t.replace(/[‘’“”]/g, '"')
   t = t.replace(/(\d)\s*"|(\d)\s*''/g, '$1$2 inch ')     // 2"  -> 2 inch
   t = t.replace(/(\d)\s*'/g, '$1 ft ')                    // 2'  -> 2 ft
+  // Mix ratios stay together: 1:2:4 -> ratio1x2x4 (so 1:4:8 does not look like 1:2:4)
+  t = t.replace(/\b(\d+(?:\.\d+)?)\s*:\s*(\d+(?:\.\d+)?)(?:\s*:\s*(\d+(?:\.\d+)?))?/g, (_m, a, b, c) => ` ratio${a}x${b}${c ? 'x' + c : ''} `)
   for (const [re, rep] of ABBR) t = t.replace(re, rep)
   t = t.replace(/(\d)\s*(mm|cm|kg|kw|kva|ton|tonne|swg|watt|w|amp)\b/g, '$1 $2')
   t = t.replace(/[^a-z0-9.\s]/g, ' ')
@@ -155,7 +159,9 @@ export function search(ix: Index, query: string, opts: { includeDeleted?: boolea
     for (let i = 1; i < q.length; i++) if (ix.pairs[k].has(q[i - 1] + ' ' + q[i])) together++
     const base = (got / total) * 100
     const bonus = q.length > 1 ? (together / (q.length - 1)) * 10 : 0
-    hits.push({ item, score: Math.round(base * 0.9 + bonus), matched })
+    // Removal/dismantling items are a different kind of work unless the query asks for them
+    const removal = REMOVAL.test(item.d) && !REMOVAL.test(query) ? 0.7 : 1
+    hits.push({ item, score: Math.round((base * 0.9 + bonus) * removal), matched })
   })
   hits.sort((a, b) => b.score - a.score || a.item.d.length - b.item.d.length)
   return hits.slice(0, opts.limit ?? 10)

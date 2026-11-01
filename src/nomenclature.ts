@@ -141,7 +141,7 @@ export function correct(input: string, unit = '', vocab?: Set<string>, details: 
 
   // 5. Tidy punctuation
   const before = t
-  t = t.replace(/\s+([,.;:])/g, '$1').replace(/([,;:])(?=\S)/g, '$1 ').replace(/,\s*,/g, ',')
+  t = t.replace(/\s+([,.;])/g, '$1').replace(/(\D)\s+:/g, '$1:').replace(/([,;])(?=\S)/g, '$1 ').replace(/:(?=[^\s\d])/g, ': ').replace(/,\s*,/g, ',')
     .replace(/\(\s+/g, '(').replace(/\s+\)/g, ')').replace(/\s+/g, ' ').trim()
   t = t[0].toUpperCase() + t.slice(1)
   if (t !== before) changes.push({ from: '', to: '', why: 'tidy' })

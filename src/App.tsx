@@ -49,7 +49,7 @@ export default function App() {
           <Nomenclature t={t} mrs={mrs} fromStep1={step1Text} onUpdate={setItem} load={load} />
           <Justify t={t} mrs={mrs} item={item} onUpdate={setJust} />
         </div>
-        <RateAnalysis t={t} item={item} just={just} />
+        <RateAnalysis t={t} item={item} just={just} mrs={mrs} />
 
         <p className="rounded-lg bg-blue-50 p-3 text-sm text-blue-900 print:hidden">{t.install}</p>
         <p className="text-xs text-slate-500 print:hidden">{t.dataNote}</p>
