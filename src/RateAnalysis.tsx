@@ -37,6 +37,16 @@ function metric(unit: string): { label: string; mult: number } | null {
 export default function RateAnalysis({ t, item, just, mrs }: { t: Text; item: ItemState; just: JustifyState; mrs: Mrs }) {
   const [project, setProject] = useState('')
   const [sub, setSub] = useState('')
+  // Name of Office is remembered on this device (same office for every analysis)
+  const [office, setOfficeState] = useState(() => { try { return localStorage.getItem('office-name') ?? '' } catch { return '' } })
+  const setOffice = (v: string) => { setOfficeState(v); try { localStorage.setItem('office-name', v) } catch { /* ignore */ } }
+  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10))
+  const head = [
+    { key: 'office', label: t.ra_office, value: office, set: setOffice, ph: t.ra_officePh },
+    { key: 'work', label: t.ra_project, value: project, set: setProject, ph: '' },
+    { key: 'sub', label: t.ra_sub, value: sub, set: setSub, ph: '' },
+    { key: 'date', label: t.ra_date, value: date, set: setDate, ph: '' },
+  ]
   const [lines, setLines] = useState<Line[]>([])
   const [rates, setRates] = useState<RateEntry[]>(loadRates)
   const [tpl, setTpl] = useState<{ c: string; n: string; u: string; pg: number; factor: number } | null>(null)
@@ -170,14 +180,20 @@ export default function RateAnalysis({ t, item, just, mrs }: { t: Text; item: It
           <p className="font-semibold">COMMUNICATION &amp; WORKS DEPARTMENT</p>
           <p className="font-semibold underline">RATE ANALYSIS — NON-SCHEDULE ITEM (NSI)</p>
         </div>
-        <div className="grid gap-2 text-sm sm:grid-cols-2">
-          <label><span className="text-slate-600">{t.ra_project}</span>
-            <input value={project} onChange={e => setProject(e.target.value)} className="mt-1 w-full rounded-lg border border-slate-300 p-2 print:hidden" />
-            <span className="hidden font-semibold print:block">{project}</span></label>
-          <label><span className="text-slate-600">{t.ra_sub}</span>
-            <input value={sub} onChange={e => setSub(e.target.value)} className="mt-1 w-full rounded-lg border border-slate-300 p-2 print:hidden" />
-            <span className="hidden font-semibold print:block">{sub}</span></label>
-        </div>
+        {/* Entry form — typed here in the same layout as the printout ("Label: value") */}
+        <fieldset className="mt-2 rounded-lg border-2 border-blue-200 bg-blue-50/40 p-3 text-sm print:mt-3 print:border-0 print:bg-white print:p-0">
+          <legend className="px-1 text-xs font-semibold text-blue-900 print:hidden">{t.ra_form}</legend>
+          <div className="space-y-2 print:space-y-1">
+            {head.map(f => (
+              <label key={f.key} className="flex flex-wrap items-baseline gap-x-2">
+                <span className="w-36 shrink-0 font-semibold">{f.label}:</span>
+                <input type={f.key === 'date' ? 'date' : 'text'} value={f.value} onChange={e => f.set(e.target.value)} placeholder={f.ph || '______________________________'}
+                  className="min-w-0 flex-1 border-0 border-b border-slate-500 bg-transparent px-1 py-0.5 focus:border-blue-700 focus:outline-none print:hidden" />
+                <span className="hidden print:inline">{(f.key === 'date' && f.value ? f.value.split('-').reverse().join('-') : f.value) || '______________________________'}</span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
         <p className="mt-3 text-sm"><b>Item (NSI):</b> {nomen || <span className="text-slate-400">{t.ra_empty}</span>}</p>
         <p className="text-sm"><b>Rate analysis per:</b> {unit || '—'}</p>
         {tpl && (
