@@ -1,13 +1,14 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { correct, INCLUDES, type Details } from './nomenclature'
 import { CATEGORIES, detectCategories, slots, fill, perBase } from './extras'
 import { search, type MrsItem } from './search'
 import type { Text } from './i18n'
 import type { Mrs } from './useMrs'
+import type { ItemState } from './MarketCheck'
 
 const fmt = (n: number) => n.toLocaleString('en-PK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
-export default function Nomenclature({ t, mrs, fromStep1 }: { t: Text; mrs: Mrs; fromStep1: string }) {
+export default function Nomenclature({ t, mrs, fromStep1, onUpdate }: { t: Text; mrs: Mrs; fromStep1: string; onUpdate: (s: ItemState) => void }) {
   const [input, setInput] = useState('')
   const [unit, setUnit] = useState('')
   const [d, setD] = useState<Details>({ includes: [] })
@@ -37,6 +38,9 @@ export default function Nomenclature({ t, mrs, fromStep1 }: { t: Text; mrs: Mrs;
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [started, input, unit, d, JSON.stringify(picked), vocab],
   )
+  // Share the corrected item with step 3 (market check) and step 4 (rate analysis)
+  useEffect(() => { onUpdate({ text: res?.text ?? '', unit, rate: nsiRate, base }) }, [res?.text, unit, nsiRate, base, onUpdate])
+
   const hits = started && mrs.index ? search(mrs.index, input, { limit: 5 }).filter(h => h.score >= 35) : []
   const unitHint = base ? `${base.u} (${base.c})` : hits[0] ? `${hits[0].item.u} (${hits[0].item.c})` : null
 
@@ -74,8 +78,8 @@ export default function Nomenclature({ t, mrs, fromStep1 }: { t: Text; mrs: Mrs;
   return (
     <section className="rounded-xl bg-white p-4 shadow-sm">
       <div className="flex items-center gap-3">
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-800 font-bold text-white">3</span>
-        <h2 className="text-lg font-semibold">{t.step3}</h2>
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-800 font-bold text-white">2</span>
+        <h2 className="text-lg font-semibold">{t.step2}</h2>
       </div>
       <p className="mt-3 text-sm text-slate-600">{t.nomHint}</p>
       <textarea dir="ltr" rows={3} value={input} onChange={e => { setInput(e.target.value); setCopied(false) }}
