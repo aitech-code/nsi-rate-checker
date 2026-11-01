@@ -1,9 +1,52 @@
+import { useEffect, useState } from 'react'
+import { text, loadLang, saveLang, type Lang } from './i18n'
+
 export default function App() {
+  const [lang, setLang] = useState<Lang>(loadLang)
+  const t = text[lang]
+
+  // Urdu reads right-to-left: update the whole page direction
+  useEffect(() => {
+    document.documentElement.lang = lang
+    document.documentElement.dir = lang === 'ur' ? 'rtl' : 'ltr'
+    saveLang(lang)
+  }, [lang])
+
+  const steps = [t.step1, t.step2, t.step3, t.step4]
+
   return (
-    <main className="min-h-screen bg-slate-50 p-6">
-      <h1 className="text-2xl font-bold text-blue-800">NSI Rate Checker</h1>
-      <p className="mt-2 text-slate-700">C&amp;W Department KP — Phase 1 test</p>
-      <p className="mt-4 rounded bg-green-100 p-3 text-green-800">Tailwind is working ✔</p>
-    </main>
+    <div className="min-h-screen bg-slate-50 text-slate-800">
+      <header className="bg-blue-800 text-white">
+        <div className="mx-auto flex max-w-3xl items-center justify-between gap-3 p-4">
+          <div>
+            <h1 className="text-xl font-bold">{t.appName}</h1>
+            <p className="text-sm text-blue-100">{t.subtitle}</p>
+          </div>
+          <button
+            onClick={() => setLang(lang === 'en' ? 'ur' : 'en')}
+            className="rounded-lg bg-yellow-400 px-4 py-2 font-semibold text-blue-900 active:scale-95"
+          >
+            {t.switchTo}
+          </button>
+        </div>
+      </header>
+
+      <main className="mx-auto max-w-3xl space-y-3 p-4">
+        {steps.map((s, i) => (
+          <div key={i} className="flex items-center gap-3 rounded-xl bg-white p-4 shadow-sm">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-100 font-bold text-blue-800">
+              {i + 1}
+            </span>
+            <div>
+              <p className="font-semibold">{s}</p>
+              <p className="text-sm text-slate-500">{t.comingSoon}</p>
+            </div>
+          </div>
+        ))}
+
+        <p className="rounded-lg bg-blue-50 p-3 text-sm text-blue-900">{t.install}</p>
+        <p className="text-xs text-slate-500">{t.dataNote}</p>
+      </main>
+    </div>
   )
 }
