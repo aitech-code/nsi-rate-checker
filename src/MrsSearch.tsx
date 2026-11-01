@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
-import { buildIndex, search, type Hit, type MrsData } from './search'
+import { buildIndex, search, wordCount, type Hit, type MrsData } from './search'
 import type { Text } from './i18n'
 
 const DATA_URL = '/data/mrs-2025-1.json'
 const STRONG = 60   // % match for "strong"
 const POSSIBLE = 35 // % match for "possible"
+const MIN_WORDS = 4  // fewer words than this can never be a "strong" match
 
 const fmt = (n: number | null) =>
   n === null ? '—' : n.toLocaleString('en-PK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -30,7 +31,8 @@ export default function MrsSearch({ t }: { t: Text }) {
   )
 
   const top = hits[0]?.score ?? 0
-  const verdict = !asked ? null : top >= STRONG ? 'strong' : top >= POSSIBLE ? 'possible' : 'none'
+  const tooShort = asked.trim() !== '' && wordCount(asked) < MIN_WORDS
+  const verdict = !asked ? null : top >= STRONG && !tooShort ? 'strong' : top >= POSSIBLE ? 'possible' : 'none'
   const verdictStyle = {
     strong: 'bg-red-50 text-red-800 border-red-200',
     possible: 'bg-amber-50 text-amber-900 border-amber-200',
@@ -74,7 +76,10 @@ export default function MrsSearch({ t }: { t: Text }) {
       </p>
 
       {verdict && (
-        <div className={`mt-4 rounded-lg border p-3 font-semibold ${verdictStyle[verdict]}`}>{t[verdict]}</div>
+        <div className={`mt-4 rounded-lg border p-3 font-semibold ${verdictStyle[verdict]}`}>
+          {t[verdict]}
+          {tooShort && <p className="mt-1 text-sm font-normal">{t.tooShort}</p>}
+        </div>
       )}
 
       <ul className="mt-3 space-y-3">

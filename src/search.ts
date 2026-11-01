@@ -13,6 +13,10 @@ export type MrsData = {
   items: MrsItem[]
 }
 export type Hit = { item: MrsItem; score: number; matched: string[] }
+// How many meaningful words the user typed (synonym expansions not counted)
+export function wordCount(query: string): number {
+  return new Set(normalize(query).split(/\s+/).filter(w => w.length > 1 && !STOP.has(w))).size
+}
 
 // Common C&W abbreviations -> full words (applied before searching)
 const ABBR: [RegExp, string][] = [
@@ -20,6 +24,7 @@ const ABBR: [RegExp, string][] = [
   [/\bp\s*\/\s*l\b/g, ' providing laying '],
   [/\bp\s*\/\s*a\b/g, ' providing applying '],
   [/\bs\s*\/\s*e\b/g, ' supply erection '],
+  [/\bp\s*\/\s*e\b/g, ' providing erecting '],
   [/\bs\s*\/\s*f\b/g, ' supply fixing '],
   [/\bs\s*\/\s*i\b/g, ' supply installation '],
   [/\bi\s*\/\s*c\b/g, ' including '],
@@ -53,7 +58,7 @@ const SYNONYMS: Record<string, string[]> = {
 // Words that carry little meaning in BOQ descriptions
 const STOP = new Set(('a an and the of to in on at for by or as per with from all any be is are complete ' +
   'completed respect respects approved directed engineer incharge charge site including providing fixing ' +
-  'supply erection laying making etc i e ie no nos each job item quality best make same shown drawing ' +
+  'supply erection erecting laying making etc i e ie no nos each job item quality best make same shown drawing ' +
   'drawings specification specifications specified required necessary').split(' '))
 
 function normalize(s: string): string {
@@ -71,7 +76,7 @@ export function tokens(s: string): string[] {
   const out: string[] = []
   for (let w of normalize(s).split(/\s+/)) {
     w = w.replace(/^\.+|\.+$/g, '')
-    if (!w || STOP.has(w)) continue
+    if (!w || STOP.has(w) || (w.length === 1 && !/\d/.test(w))) continue
     if (w.length > 3 && w.endsWith('s') && !w.endsWith('ss') && !/\d/.test(w)) w = w.slice(0, -1) // pipes -> pipe
     out.push(w)
     const syn = SYNONYMS[w]
@@ -97,16 +102,18 @@ function close(a: string, b: string): boolean {
   return edits + (a.length - i) + (b.length - j) <= 1
 }
 
-export type Index = { items: MrsItem[]; toks: Set<string>[]; idf: Map<string, number>; vocab: string[] }
+export type Index = { items: MrsItem[]; toks: Set<string>[]; pairs: Set<string>[]; idf: Map<string, number>; vocab: string[] }
 
 export function buildIndex(items: MrsItem[]): Index {
-  const toks = items.map(it => new Set(tokens(it.d)))
+  const seqs = items.map(it => tokens(it.d))
+  const toks = seqs.map(q => new Set(q))
+  const pairs = seqs.map(q => new Set(q.slice(1).map((w, i) => q[i] + ' ' + w)))
   const df = new Map<string, number>()
   for (const set of toks) for (const w of set) df.set(w, (df.get(w) ?? 0) + 1)
   const n = items.length
   const idf = new Map<string, number>()
   for (const [w, f] of df) idf.set(w, Math.log(1 + n / f))
-  return { items, toks, idf, vocab: [...df.keys()] }
+  return { items, toks, pairs, idf, vocab: [...df.keys()] }
 }
 
 export function search(ix: Index, query: string, opts: { includeDeleted?: boolean; limit?: number } = {}): Hit[] {
@@ -142,7 +149,13 @@ export function search(ix: Index, query: string, opts: { includeDeleted?: boolea
       const m = x.v.find(v => set.has(v))
       if (m) { got += x.weight * x.credit; matched.push(m) }
     }
-    if (got > 0) hits.push({ item, score: Math.round((got / total) * 100), matched })
+    if (got === 0) return
+    // Bonus when words appear together in the same order, e.g. "wire mesh"
+    let together = 0
+    for (let i = 1; i < q.length; i++) if (ix.pairs[k].has(q[i - 1] + ' ' + q[i])) together++
+    const base = (got / total) * 100
+    const bonus = q.length > 1 ? (together / (q.length - 1)) * 10 : 0
+    hits.push({ item, score: Math.round(base * 0.9 + bonus), matched })
   })
   hits.sort((a, b) => b.score - a.score || a.item.d.length - b.item.d.length)
   return hits.slice(0, opts.limit ?? 10)

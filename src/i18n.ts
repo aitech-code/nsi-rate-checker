@@ -33,6 +33,7 @@ export const text = {
     showDeleted: 'Also show deleted items',
     disclaimer: 'Results are a guide. Before deciding, compare the full description and specification with the official MRS book.',
     districtNote: 'Rates are Peshawar base rates. Apply your district location factor.',
+    tooShort: 'Description is very short. Add material, size, thickness or gauge for a reliable check.',
   },
   ur: {
     appName: 'این ایس آئی ریٹ چیکر',
@@ -65,6 +66,7 @@ export const text = {
     showDeleted: 'حذف شدہ آئٹمز بھی دکھائیں',
     disclaimer: 'یہ نتائج رہنمائی کے لیے ہیں۔ فیصلے سے پہلے مکمل تفصیل اور اسپیسیفکیشن سرکاری ایم آر ایس کتاب سے ضرور ملائیں۔',
     districtNote: 'یہ پشاور کے بنیادی ریٹس ہیں۔ اپنے ضلع کا لوکیشن فیکٹر لگائیں۔',
+    tooShort: 'تفصیل بہت مختصر ہے۔ درست جانچ کے لیے میٹیریل، سائز، موٹائی یا گیج بھی لکھیں۔',
   },
 } as const
 
