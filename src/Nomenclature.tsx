@@ -4,10 +4,11 @@ import { search, type MrsItem } from './search'
 import type { Text } from './i18n'
 import type { Mrs } from './useMrs'
 import type { ItemState } from './item'
+import type { LoadRequest } from './BatchCheck'
 
 const fmt = (n: number) => n.toLocaleString('en-PK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
-export default function Nomenclature({ t, mrs, fromStep1, onUpdate }: { t: Text; mrs: Mrs; fromStep1: string; onUpdate: (s: ItemState) => void }) {
+export default function Nomenclature({ t, mrs, fromStep1, onUpdate, load }: { t: Text; mrs: Mrs; fromStep1: string; onUpdate: (s: ItemState) => void; load: LoadRequest | null }) {
   const [input, setInput] = useState('')
   const [unit, setUnit] = useState('')
   const [d, setD] = useState<Details>({ includes: [] })
@@ -15,6 +16,13 @@ export default function Nomenclature({ t, mrs, fromStep1, onUpdate }: { t: Text;
   const [copied, setCopied] = useState(false)
   const [base, setBase] = useState<MrsItem | null>(null)
   const [nsiRate, setNsiRate] = useState('')
+
+  // An item opened from the batch list fills this card
+  useEffect(() => {
+    if (!load) return
+    setInput(load.text); setUnit(load.unit); setNsiRate(load.rate); setBase(null); setStarted(true); setCopied(false)
+    document.getElementById('step2')?.scrollIntoView({ behavior: 'smooth' })
+  }, [load])
 
   // Result updates live once the engineer has pressed the button
   const res = useMemo(() => (started && input.trim() ? correct(input, unit, mrs.vocab, d) : null), [started, input, unit, d, mrs.vocab])
@@ -44,7 +52,7 @@ export default function Nomenclature({ t, mrs, fromStep1, onUpdate }: { t: Text;
   const inp = 'mt-1 rounded-lg border border-slate-300 p-2 focus:border-blue-600 focus:outline-none'
 
   return (
-    <section className="rounded-xl bg-white p-4 shadow-sm">
+    <section id="step2" className="rounded-xl bg-white p-4 shadow-sm">
       <div className="flex items-center gap-3">
         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-800 font-bold text-white">2</span>
         <h2 className="text-lg font-semibold">{t.step2}</h2>

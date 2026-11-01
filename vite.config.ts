@@ -13,7 +13,8 @@ export default defineConfig({
         // Keep MRS data available offline; let /data/ links open the real file
         globPatterns: ['**/*.{js,css,html,png,svg,ico,json}'],
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
-        navigateFallbackDenylist: [/^\/data\//],
+        globIgnores: ['ocr/**'],
+        navigateFallbackDenylist: [/^\/data\//, /^\/ocr\//],
       },
       includeAssets: ['favicon.ico', 'apple-touch-icon-180x180.png', 'logo.svg'],
       manifest: {

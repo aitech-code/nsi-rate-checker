@@ -5,3 +5,9 @@ html[lang="ur"] body {
   font-family: "Noto Nastaliq Urdu", "Jameel Noori Nastaleeq", "Urdu Typesetting", "Noto Naskh Arabic", serif;
   line-height: 2;
 }
+
+/* Printing the rate analysis on A4 */
+@media print {
+  @page { size: A4; margin: 12mm; }
+  body { font-size: 11px; }
+}

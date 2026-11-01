@@ -1,10 +1,10 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { correct } from './nomenclature'
 import { detectCategories, slots, fill, perBase } from './extras'
 import { DISTRICTS, OVERHEADS, OVERHEAD_TOTAL } from './districts'
 import type { Text } from './i18n'
 import type { Mrs } from './useMrs'
-import type { ItemState } from './item'
+import type { ItemState, JustifyState } from './item'
 
 const TOLERANCE = 5 // % of the NSI rate that may stay unexplained
 const OH = 1 + OVERHEAD_TOTAL / 100
@@ -14,7 +14,7 @@ const fmt = (n: number) => n.toLocaleString('en-PK', { minimumFractionDigits: 2,
 type Pick = { vals: string[]; cost: string }
 type Custom = { text: string; cost: string }
 
-export default function Justify({ t, mrs, item }: { t: Text; mrs: Mrs; item: ItemState }) {
+export default function Justify({ t, mrs, item, onUpdate }: { t: Text; mrs: Mrs; item: ItemState; onUpdate: (j: JustifyState) => void }) {
   const [picked, setPicked] = useState<Record<string, Pick>>({})
   const [custom, setCustom] = useState<Custom[]>([])
   const [district, setDistrict] = useState('Peshawar')
@@ -52,6 +52,13 @@ export default function Justify({ t, mrs, item }: { t: Text; mrs: Mrs; item: Ite
   const finalText = item.started && item.input.trim()
     ? correct(item.input, item.unit, mrs.vocab, { ...item.details, includes: [...done.map(l => l.text), ...(item.details.includes ?? [])] }).text
     : ''
+
+  // Hand the extras, reference and final wording to step 4 (rate analysis)
+  const refLabel = manualRef.trim() ? 'Reference rate (typed)' : item.base && mrsRef !== null ? `MRS-2025 ${item.base.c} × ${factor.toFixed(2)} (${district})` : ''
+  const doneKey = JSON.stringify(done)
+  useEffect(() => {
+    onUpdate({ extras: JSON.parse(doneKey).map((l: { text: string; cost: number }) => ({ text: l.text, cost: l.cost })), ref, refLabel, finalText })
+  }, [doneKey, ref, refLabel, finalText, onUpdate])
 
   const toggle = (tpl: string) => setPicked(p => { const n = { ...p }; if (n[tpl]) delete n[tpl]; else n[tpl] = { vals: slots(tpl).map(() => ''), cost: '' }; return n })
   const setVal = (tpl: string, i: number, v: string) => setPicked(p => ({ ...p, [tpl]: { ...p[tpl], vals: p[tpl].vals.map((x, k) => (k === i ? v : x)) } }))
