@@ -1,8 +1,7 @@
-import { useEffect, useMemo, useState } from 'react'
-import { buildIndex, search, wordCount, type Hit, type MrsData } from './search'
+import { useMemo, useState } from 'react'
+import { search, wordCount, type Hit } from './search'
 import type { Text } from './i18n'
-
-const DATA_URL = '/data/mrs-2025-1.json'
+import type { Mrs } from './useMrs'
 const STRONG = 60   // % match for "strong"
 const POSSIBLE = 35 // % match for "possible"
 const MIN_WORDS = 4  // fewer words than this can never be a "strong" match
@@ -10,21 +9,12 @@ const MIN_WORDS = 4  // fewer words than this can never be a "strong" match
 const fmt = (n: number | null) =>
   n === null ? '—' : n.toLocaleString('en-PK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
-export default function MrsSearch({ t }: { t: Text }) {
-  const [data, setData] = useState<MrsData | null>(null)
-  const [error, setError] = useState(false)
+export default function MrsSearch({ t, mrs, onAsk }: { t: Text; mrs: Mrs; onAsk: (q: string) => void }) {
+  const { data, error, index } = mrs
   const [query, setQuery] = useState('')
   const [asked, setAsked] = useState('')
   const [showDeleted, setShowDeleted] = useState(false)
 
-  useEffect(() => {
-    fetch(DATA_URL)
-      .then(r => { if (!r.ok) throw new Error(String(r.status)); return r.json() })
-      .then(setData)
-      .catch(() => setError(true))
-  }, [])
-
-  const index = useMemo(() => (data ? buildIndex(data.items) : null), [data])
   const hits: Hit[] = useMemo(
     () => (index && asked.trim() ? search(index, asked, { includeDeleted: showDeleted, limit: 8 }) : []),
     [index, asked, showDeleted],
@@ -57,7 +47,7 @@ export default function MrsSearch({ t }: { t: Text }) {
       />
       <div className="mt-2 flex flex-wrap items-center gap-3">
         <button
-          onClick={() => setAsked(query)}
+          onClick={() => { setAsked(query); onAsk(query) }}
           disabled={!index || !query.trim()}
           className="rounded-lg bg-blue-800 px-5 py-2.5 font-semibold text-white disabled:opacity-40 active:scale-95"
         >
@@ -87,7 +77,7 @@ export default function MrsSearch({ t }: { t: Text }) {
           <li key={item.c} className="rounded-lg border border-slate-200 p-3">
             <div className="flex flex-wrap items-center gap-2 text-sm">
               <span className="rounded bg-blue-100 px-2 py-0.5 font-mono font-bold text-blue-900">{item.c}</span>
-              <span className={`rounded px-2 py-0.5 font-semibold ${score >= STRONG ? 'bg-red-100 text-red-800' : score >= POSSIBLE ? 'bg-amber-100 text-amber-900' : 'bg-slate-100 text-slate-600'}`}>
+              <span className={`rounded px-2 py-0.5 font-semibold ${score >= STRONG && !tooShort ? 'bg-red-100 text-red-800' : score >= POSSIBLE ? 'bg-amber-100 text-amber-900' : 'bg-slate-100 text-slate-600'}`}>
                 {score}% {t.match}
               </span>
               {item.del && <span className="rounded bg-slate-800 px-2 py-0.5 text-white">{t.deleted}</span>}

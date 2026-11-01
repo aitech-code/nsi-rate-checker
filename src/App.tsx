@@ -1,10 +1,14 @@
 import { useEffect, useState } from 'react'
 import { text, loadLang, saveLang, type Lang } from './i18n'
 import MrsSearch from './MrsSearch'
+import Nomenclature from './Nomenclature'
+import { useMrs } from './useMrs'
 
 export default function App() {
   const [lang, setLang] = useState<Lang>(loadLang)
   const t = text[lang]
+  const mrs = useMrs()
+  const [step1Text, setStep1Text] = useState('')
 
   // Urdu reads right-to-left: update the whole page direction
   useEffect(() => {
@@ -13,7 +17,15 @@ export default function App() {
     saveLang(lang)
   }, [lang])
 
-  const later = [t.step2, t.step3, t.step4]
+  const placeholder = (n: number, s: string) => (
+    <div className="flex items-center gap-3 rounded-xl bg-white p-4 opacity-70 shadow-sm">
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-100 font-bold text-blue-800">{n}</span>
+      <div>
+        <p className="font-semibold">{s}</p>
+        <p className="text-sm text-slate-500">{t.comingSoon}</p>
+      </div>
+    </div>
+  )
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800">
@@ -33,19 +45,10 @@ export default function App() {
       </header>
 
       <main className="mx-auto max-w-3xl space-y-3 p-4">
-        <MrsSearch t={t} />
-
-        {later.map((s, i) => (
-          <div key={i} className="flex items-center gap-3 rounded-xl bg-white p-4 opacity-70 shadow-sm">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-100 font-bold text-blue-800">
-              {i + 2}
-            </span>
-            <div>
-              <p className="font-semibold">{s}</p>
-              <p className="text-sm text-slate-500">{t.comingSoon}</p>
-            </div>
-          </div>
-        ))}
+        <MrsSearch t={t} mrs={mrs} onAsk={setStep1Text} />
+        {placeholder(2, t.step2)}
+        <Nomenclature t={t} mrs={mrs} fromStep1={step1Text} />
+        {placeholder(4, t.step4)}
 
         <p className="rounded-lg bg-blue-50 p-3 text-sm text-blue-900">{t.install}</p>
         <p className="text-xs text-slate-500">{t.dataNote}</p>
