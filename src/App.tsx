@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { text, loadLang, saveLang, type Lang } from './i18n'
+import MrsSearch from './MrsSearch'
 
 export default function App() {
   const [lang, setLang] = useState<Lang>(loadLang)
@@ -12,7 +13,7 @@ export default function App() {
     saveLang(lang)
   }, [lang])
 
-  const steps = [t.step1, t.step2, t.step3, t.step4]
+  const later = [t.step2, t.step3, t.step4]
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800">
@@ -32,10 +33,12 @@ export default function App() {
       </header>
 
       <main className="mx-auto max-w-3xl space-y-3 p-4">
-        {steps.map((s, i) => (
-          <div key={i} className="flex items-center gap-3 rounded-xl bg-white p-4 shadow-sm">
+        <MrsSearch t={t} />
+
+        {later.map((s, i) => (
+          <div key={i} className="flex items-center gap-3 rounded-xl bg-white p-4 opacity-70 shadow-sm">
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-100 font-bold text-blue-800">
-              {i + 1}
+              {i + 2}
             </span>
             <div>
               <p className="font-semibold">{s}</p>

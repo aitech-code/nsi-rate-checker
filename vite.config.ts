@@ -9,6 +9,12 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
+      workbox: {
+        // Keep MRS data available offline; let /data/ links open the real file
+        globPatterns: ['**/*.{js,css,html,png,svg,ico,json}'],
+        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
+        navigateFallbackDenylist: [/^\/data\//],
+      },
       includeAssets: ['favicon.ico', 'apple-touch-icon-180x180.png', 'logo.svg'],
       manifest: {
         name: 'NSI Rate Checker — C&W KP',
